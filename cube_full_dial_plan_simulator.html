@@ -157,9 +157,9 @@
             Enter the "Calling Number" and "Called Number" for a specific scenario, then click "Simulate Call Flow" to see the CUBE's routing and translation logic in action.
           </p>
           <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
-            <li><strong>Calling Number:</strong> The number originating the call (e.g., `101001`, `301001`, `+16205558080`).</li>
-            <li><strong>Called Number:</strong> The number being dialed (e.g., `301001`, `101001`, `+1234567890`).</li>
-            <li><strong>Output:</strong> Displays the detected inbound/outbound dial-peers and any number translations applied.</li>
+            <li>**Calling Number:** The number originating the call (e.g., `101001`, `301001`, `+16205558080`).</li>
+            <li>**Called Number:** The number being dialed (e.g., `301001`, `101001`, `+1234567890`).</li>
+            <li>**Output:** Displays the detected inbound/outbound dial-peers and any number translations applied.</li>
           </ul>
         </div>
 
@@ -170,25 +170,31 @@
             <thead class="bg-gray-100">
               <tr>
                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Scenario #
+                  Scenario
                 </th>
                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Calling Platform
+                  Calling Party (CPN)
                 </th>
                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Called Platform
+                  Called Party (CDPN)
                 </th>
                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Calling Number (Example)
+                  CUBE Ingress DP
                 </th>
                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Called Number (Example)
+                  CUBE Egress DP
                 </th>
                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description & Path
+                  CPN at CUBE Egress
                 </th>
                 <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  CDPN at CUBE Egress
+                </th>
+                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Expected Result
+                </th>
+                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Notes on Formatting
                 </th>
               </tr>
             </thead>
@@ -276,22 +282,22 @@
         const cubeConfig = {
             uriClasses: {
                 'ZOOM': ['144.195.121.212', '206.247.121.212'],
-                'CUCM': ['192.168.210.21', '10.99.99.3'], // Added 10.99.99.3 for CUCM redundancy
+                'CUCM': ['192.168.210.21', '10.99.99.3'],
                 'ITSP': ['192.168.130.5'],
             },
             e164PatternMaps: {
-                '101': /^301\d{3}$/, // Matches 301 followed by any 3 digits for CUCM internal
-                '201': /^101\d{3}$/, // Matches 101 followed by any 3 digits for Zoom internal
-                '110': /^\+1[2-9]\d{2}[2-9]\d{6}$/, // Standard NA 10-digit E.164 (e.g., +14085551234)
-                '210': /^\+1[2-9]\d{2}[2-9]\d{6}$/, // Standard NA 10-digit E.164 (same as 110, for CUCM outbound)
-                '301': /^\+1620555\d{4}$/, // Matches +1620555XXXX for Zoom DIDs
-                '302': /^\+13035553\d{3}$/, // Matches +13035553XXX for CUCM DIDs
+                '101': /^301\d{3}$/,
+                '201': /^101\d{3}$/,
+                '110': /^\+1[2-9]\d{2}[2-9]\d{6}$/,
+                '210': /^\+1[2-9]\d{2}[2-9]\d{6}$/, // Kept as distinct pattern for now, but behavior matches 110
+                '301': /^\+1620555\d{4}$/,
+                '302': /^\+13035553\d{3}$/,
             },
             translationRules: {
-                '105': { type: 'calling', pattern: /\+16205558080/, replace: '108080' }, // Specific Zoom DID to internal for CUCM
-                '210': { type: 'calling', pattern: /301001/, replace: '+13035553001' }, // CUCM internal to +E.164
-                '301': { type: 'called', pattern: /^\+1620555(\d{4})$/, replace: '101$1' }, // PSTN DID to Zoom internal
-                '302': { type: 'called', pattern: /^\+13035553(\d{3})$/, replace: '301$1' }, // PSTN DID to CUCM internal
+                '105': { type: 'calling', pattern: /\+16205558080/, replace: '108080' },
+                '210': { type: 'calling', pattern: /301001/, replace: '+13035553001' },
+                '301': { type: 'called', pattern: /^\+1620555(\d{4})$/, replace: '101$1' },
+                '302': { type: 'called', pattern: /^\+13035553(\d{3})$/, replace: '301$1' },
             },
             translationProfiles: {
                 'IN_PSTN_TO_CUCM': { target: 'called', rule: '302' },
@@ -300,50 +306,15 @@
                 'OUT_ZOOM_TO_CUCM_CPN': { target: 'calling', rule: '105' },
             },
             dialPeers: [
-                {
-                    id: 1000, description: 'IN_ZOOM_TO_CUBE (Primary ingress from Zoom)', type: 'inbound', incomingUriVia: 'ZOOM',
-                    sipTenant: 100, oksProfile: 100, rtpSrtp: true, transportTls: true
-                },
-                {
-                    id: 1010, description: 'OUT_ZOOM_TO_CUCM (Zoom 101XXX to CUCM 301XXX internal)', type: 'outbound', destinationE164PatternMap: '101',
-                    sipTenant: 200, oksProfile: 200, // CUCM tenant
-                    translationProfiles: [
-                        { type: 'outgoing', profile: 'OUT_ZOOM_TO_CUCM_CPN' } // Applied to calling number for CUCM display
-                    ]
-                },
-                {
-                    id: 1100, description: 'OUT_ZOOM_TO_ITSP (Zoom to PSTN - CPN Passthrough)', type: 'outbound', destinationE164PatternMap: '110',
-                    sipTenant: 300, oksProfile: 300 // ITSP tenant
-                },
-                {
-                    id: 2000, description: 'IN_CUCM_TO_CUBE (Primary ingress from CUCM)', type: 'inbound', incomingUriVia: 'CUCM',
-                    sipTenant: 200, oksProfile: 200
-                },
-                {
-                    id: 2010, description: 'OUT_CUCM_TO_ZOOM (CUCM 301XXX to Zoom 101XXX internal)', type: 'outbound', destinationE164PatternMap: '201',
-                    sipTenant: 100, oksProfile: 100, rtpSrtp: true, transportTls: true // Zoom tenant
-                },
-                {
-                    id: 2100, description: 'OUT_CUCM_TO_ITSP (CUCM 301XXX to PSTN)', type: 'outbound', destinationE164PatternMap: '110', // Destination is 110 (PSTN E.164)
-                    sipTenant: 300, oksProfile: 300, // ITSP tenant
-                    translationProfiles: [
-                        { type: 'outgoing', profile: 'OUT_CUCM_TO_PSTN' }
-                    ]
-                },
-                {
-                    id: 3000, description: 'IN_ITSP_TO_CUBE (Primary ingress from ITSP)', type: 'inbound', incomingUriVia: 'ITSP',
-                    sipTenant: 300, oksProfile: 300
-                },
-                {
-                    id: 3010, description: 'IN_ITSP_TO_ZOOM (PSTN DID to Zoom 101XXX)', type: 'outbound', incomingCalledNumberMatch: /^\+1620555\d{4}$/, // Matches specific DID range for Zoom
-                    sipTenant: 100, oksProfile: 100, rtpSrtp: true, transportTls: true, // Zoom tenant
-                    translationProfiles: [{ type: 'outgoing', profile: 'IN_PSTN_TO_ZOOM' }]
-                },
-                {
-                    id: 3020, description: 'IN_ITSP_TO_CUCM (PSTN DID to CUCM 301XXX)', type: 'outbound', incomingCalledNumberMatch: /^\+13035553\d{3}$/, // Matches specific DID range for CUCM
-                    sipTenant: 200, oksProfile: 200, // CUCM tenant
-                    translationProfiles: [{ type: 'outgoing', profile: 'IN_PSTN_TO_CUCM' }]
-                },
+                { id: 1000, description: 'IN_ZOOM_TO_CUBE (Primary ingress from Zoom)', type: 'inbound', incomingUriVia: 'ZOOM', sipTenant: 100, oksProfile: 100, rtpSrtp: true, transportTls: true },
+                { id: 1010, description: 'OUT_ZOOM_TO_CUCM (Zoom 101XXX to CUCM 301XXX internal)', type: 'outbound', destinationE164PatternMap: '101', sipTenant: 200, oksProfile: 200, translationProfiles: [{ type: 'outgoing', profile: 'OUT_ZOOM_TO_CUCM_CPN' }] },
+                { id: 1100, description: 'OUT_ZOOM_TO_ITSP (Zoom to PSTN - CPN Passthrough)', type: 'outbound', destinationE164PatternMap: '110', sipTenant: 300, oksProfile: 300 },
+                { id: 2000, description: 'IN_CUCM_TO_CUBE (Primary ingress from CUCM)', type: 'inbound', incomingUriVia: 'CUCM', sipTenant: 200, oksProfile: 200 },
+                { id: 2010, description: 'OUT_CUCM_TO_ZOOM (CUCM 301XXX to Zoom 101XXX internal)', type: 'outbound', destinationE164PatternMap: '201', sipTenant: 100, oksProfile: 100, rtpSrtp: true, transportTls: true },
+                { id: 2100, description: 'OUT_CUCM_TO_ITSP (CUCM 301XXX to PSTN)', type: 'outbound', destinationE164PatternMap: '110', sipTenant: 300, oksProfile: 300, translationProfiles: [{ type: 'outgoing', profile: 'OUT_CUCM_TO_PSTN' }] },
+                { id: 3000, description: 'IN_ITSP_TO_CUBE (Primary ingress from ITSP)', type: 'inbound', incomingUriVia: 'ITSP', sipTenant: 300, oksProfile: 300 },
+                { id: 3010, description: 'IN_ITSP_TO_ZOOM (PSTN DID to Zoom 101XXX)', type: 'outbound', incomingCalledNumberMatch: /^\+1620555\d{4}$/, sipTenant: 100, oksProfile: 100, rtpSrtp: true, transportTls: true, translationProfiles: [{ type: 'outgoing', profile: 'IN_PSTN_TO_ZOOM' }] },
+                { id: 3020, description: 'IN_ITSP_TO_CUCM (PSTN DID to CUCM 301XXX)', type: 'outbound', incomingCalledNumberMatch: /^\+13035553\d{3}$/, sipTenant: 200, oksProfile: 200, translationProfiles: [{ type: 'outgoing', profile: 'IN_PSTN_TO_CUCM' }] },
             ]
         };
 
@@ -361,10 +332,10 @@
         function applyTranslation(number, ruleId) {
             const rule = cubeConfig.translationRules[ruleId];
             if (!rule) {
-                console.warn(`Translation rule ${ruleId} not found. Returning original number.`);
+                console.warn(`Translation rule ${ruleId} not found.`);
                 return number;
             }
-            const regex = new RegExp(rule.pattern); // Ensure regex is created from string pattern
+            const regex = new RegExp(rule.pattern);
             return number.replace(regex, rule.replace);
         }
 
@@ -554,8 +525,8 @@
             // --- Step 3: Apply Translations (Incoming and Outgoing on Outbound DP) ---
             let translationsContent = '<p class="font-semibold text-gray-800">Translations Applied:</p>';
             let hasTranslation = false;
-            let cpnTranslatedOriginal = null;
-            let cdpnTranslatedOriginal = null;
+            let cpnAtEgress = currentCpn; // Track CPN after translations
+            let cdpnAtEgress = currentCdpn; // Track CDPN after translations
 
 
             if (outboundDp.translationProfiles) {
@@ -569,11 +540,10 @@
                             let targetType = profile.target;
 
                             if (targetType === 'called') {
-                                oldNum = currentCdpn;
-                                newNum = applyTranslation(currentCdpn, profile.rule);
+                                oldNum = cdpnAtEgress;
+                                newNum = applyTranslation(cdpnAtEgress, profile.rule); // Use profile.rule as the key for cubeConfig.translationRules
                                 if (oldNum !== newNum) {
-                                    currentCdpn = newNum; // Apply the translation
-                                    cdpnTranslatedOriginal = oldNum;
+                                    cdpnAtEgress = newNum; // Apply the translation
                                     translationsContent += `<p class="text-sm text-green-700">CDPN: ${oldNum} ➡️ ${newNum} (by ${tp.profile} ${tp.type} leg)</p>`;
                                     addDetailedStep('translation_cdpn', `🔄 CDPN Translated (${tp.type} leg) by "${tp.profile}" (rule ${profile.rule}). Old: ${oldNum} ➡️ New: ${newNum}`);
                                     hasTranslation = true;
@@ -581,11 +551,10 @@
                                      addDetailedStep('info', `ℹ️ No CDPN translation by "${tp.profile}" (${tp.type} leg).`);
                                 }
                             } else if (targetType === 'calling') {
-                                oldNum = currentCpn;
-                                newNum = applyTranslation(currentCpn, profile.rule);
+                                oldNum = cpnAtEgress;
+                                newNum = applyTranslation(cpnAtEgress, profile.rule); // Use profile.rule as the key for cubeConfig.translationRules
                                 if (oldNum !== newNum) {
-                                    currentCpn = newNum; // Apply the translation
-                                    cpnTranslatedOriginal = oldNum;
+                                    cpnAtEgress = newNum; // Apply the translation
                                     translationsContent += `<p class="text-sm text-green-700">CPN: ${oldNum} ➡️ ${newNum} (by ${tp.profile} ${tp.type} leg)</p>`;
                                     addDetailedStep('translation_cpn', `🔄 CPN Translated (${tp.type} leg) by "${tp.profile}" (rule ${profile.rule}). Old: ${oldNum} ➡️ New: ${newNum}`);
                                     hasTranslation = true;
@@ -610,8 +579,8 @@
             visualFlowOutput.appendChild(createFlowBox(
                 `<p class="font-semibold text-blue-800">CUBE Egress DP: ${outboundDp.id}</p>` +
                 `<p class="text-xs text-gray-700">${outboundDp.description}</p>` +
-                `<p class="text-sm">CPN: ${currentCpn}</p>` +
-                `<p class="text-sm">CDPN: ${currentCdpn}</p>` +
+                `<p class="text-sm">CPN: ${cpnAtEgress}</p>` +
+                `<p class="text-sm">CDPN: ${cdpnAtEgress}</p>` +
                 `<p class="text-xs text-gray-600">Sec: ${outboundDp.transportTls ? 'TLS' : 'Non-Secure'} / ${outboundDp.rtpSrtp ? 'SRTP' : 'RTP'}</p>`,
                 'bg-blue-200', 'border-blue-500'
             ));
@@ -627,11 +596,11 @@
 
             visualFlowOutput.appendChild(createFlowBox(
                 `<p class="font-semibold text-blue-800">Destination: ${destinationSystem}</p>` +
-                `<p class="text-sm">CPN: ${currentCpn}</p>` +
-                `<p class="text-sm">CDPN: ${currentCdpn}</p>`,
+                `<p class="text-sm">CPN: ${cpnAtEgress}</p>` +
+                `<p class="text-sm">CDPN: ${cdpnAtEgress}</p>`,
                 'bg-blue-200', 'border-blue-500'
             ));
-            addDetailedStep('final', `🏁 Final Call State: CPN: ${currentCpn} 📞, CDPN: ${currentCdpn} ☎️`);
+            addDetailedStep('final', `🏁 Final Call State: CPN: ${cpnAtEgress} 📞, CDPN: ${cdpnAtEgress} ☎️`);
         }
 
         // --- DOM Elements and Event Listeners ---
@@ -645,15 +614,22 @@
         function populateMatrixTable() {
             matrixTableBody.innerHTML = ''; // Clear existing rows
             callingPlanMatrixData.forEach(scenario => {
+                // Extract Ingress and Egress DP IDs from cubePath string
+                const pathParts = scenario.cubePath.match(/\((\d+)\)/g); // Finds all numbers in parentheses
+                const ingressDp = pathParts && pathParts[0] ? pathParts[0].replace(/[\(\)]/g, '') : 'N/A';
+                const egressDp = pathParts && pathParts[1] ? pathParts[1].replace(/[\(\)]/g, '') : 'N/A';
+
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${scenario.id}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${scenario.callingPlatform}</td>
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${scenario.calledPlatform}</td>
+                    <td class="px-3 py-2 text-sm text-gray-700">${scenario.id}. ${scenario.description}</td>
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${scenario.callingNumber}</td>
                     <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${scenario.calledNumber}</td>
-                    <td class="px-3 py-2 text-sm text-gray-700">${scenario.description} <br/> <span class="font-mono text-gray-600 text-xs">${scenario.cubePath}</span></td>
-                    <td class="px-3 py-2 whitespace-nowrap text-sm text-green-600 font-semibold">${scenario.status} ✔️</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${ingressDp}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${egressDp}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">Simulated by CUBE</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">Simulated by CUBE</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-green-600 font-semibold">${scenario.status}</td>
+                    <td class="px-3 py-2 text-sm text-gray-700">N/A</td>
                 `;
                 matrixTableBody.appendChild(row);
             });
@@ -662,23 +638,41 @@
         document.addEventListener('DOMContentLoaded', () => {
             populateMatrixTable();
             simulateButton.addEventListener('click', simulateCall);
-            // Set initial values for convenience based on the common test case (Zoom to PSTN)
-            originatingSystemSelect.value = 'Zoom Phone';
-            callingNumberInput.value = '+16205558080';
-            calledNumberInput.value = '+1234567890';
+            
+            // Set initial values for convenience based on the first scenario in the matrix
+            // This ensures inputs are pre-filled when the page loads
+            if (callingPlanMatrixData.length > 0) {
+                const firstScenario = callingPlanMatrixData[0];
+                originatingSystemSelect.value = firstScenario.callingPlatform;
+                callingNumberInput.value = firstScenario.callingNumber;
+                calledNumberInput.value = firstScenario.calledNumber;
+            }
         });
 
         // Event listener for originating system change to update default CPN/CDPN
         originatingSystemSelect.addEventListener('change', (e) => {
-            if (e.target.value === 'Zoom Phone') {
-                callingNumberInput.value = '+16205558080'; // Zoom to PSTN default CPN
-                calledNumberInput.value = '+1234567890'; // Generic PSTN CDPN
-            } else if (e.target.value === 'CUCM') {
-                callingNumberInput.value = '301001'; // CUCM to Zoom default CPN
-                calledNumberInput.value = '101001'; // Zoom extension CDPN
-            } else if (e.target.value === 'PSTN (ITSP)') {
-                callingNumberInput.value = '+1234567890'; // Generic PSTN CPN
-                calledNumberInput.value = '+16205558080'; // PSTN to Zoom DID
+            // Find the scenario that matches the selected originating system and a typical call flow
+            // This is a simplified way to pre-fill. For complex scenarios, user might need to adjust.
+            const selectedSystem = e.target.value;
+            let foundScenario = null;
+
+            // Try to find a scenario where the selected system is the calling platform
+            // Prioritize internal calls if available, then outbound, then inbound DIDs
+            if (selectedSystem === 'Zoom Phone') {
+                foundScenario = callingPlanMatrixData.find(s => s.id === 1); // Zoom to CUCM
+            } else if (selectedSystem === 'CUCM') {
+                foundScenario = callingPlanMatrixData.find(s => s.id === 2); // CUCM to Zoom
+            } else if (selectedSystem === 'PSTN (ITSP)') {
+                foundScenario = callingPlanMatrixData.find(s => s.id === 4); // PSTN to Zoom
+            }
+
+            if (foundScenario) {
+                callingNumberInput.value = foundScenario.callingNumber;
+                calledNumberInput.value = foundScenario.calledNumber;
+            } else {
+                // Fallback if no specific scenario found for pre-filling
+                callingNumberInput.value = '';
+                calledNumberInput.value = '';
             }
         });
     </script>
