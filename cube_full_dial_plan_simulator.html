@@ -3,458 +3,684 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CUBE Dial Plan Visualizer Lab - Full Flows</title>
+    <title>Cisco CUBE Call Flow Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter font for better aesthetics -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
     <style>
         body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 20px;
-            background-color: #f4f7f6;
-        }
-        h1 {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* bg-gray-100 */
             color: #333;
         }
-        #canvasContainer {
-            border: 1px solid #ccc;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            background-color: #fff;
-            margin-bottom: 20px;
+        .flow-box {
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            border: 1px solid;
+            text-align: center;
+            min-width: 200px;
+            max-width: 280px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.3s ease-in-out;
+            flex-shrink: 0;
         }
-        #controls {
-            margin-bottom: 20px;
-            display: flex;
-            flex-wrap: wrap; /* Allow buttons to wrap */
-            justify-content: center;
-            gap: 10px; /* Space between buttons */
-            max-width: 800px;
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: #60a5fa; /* blue-400 */
+            margin: auto 0.5rem; /* Center vertically, add horizontal margin */
+            text-align: center;
+            flex-shrink: 0;
         }
-        #controls button {
-            padding: 10px 15px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
-            min-width: 220px; /* Ensure buttons have a minimum width */
+        /* Consistency with React version */
+        button {
+            min-height: 44px; /* Recommended minimum touch target size */
+            min-width: 44px;
         }
-        #controls button:hover {
-            background-color: #0056b3;
+        input[type="text"] {
+            min-height: 44px; /* Ensure input fields are also large enough */
         }
-        #callDetails {
-            width: 800px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            background-color: #e9ecef;
-            border-radius: 8px;
-            min-height: 200px; /* Increased height */
-            font-family: 'Courier New', Courier, monospace;
-            white-space: pre-wrap;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-            text-align: left; /* Align text left for readability */
+        table {
+            border-collapse: collapse;
         }
-        .highlight {
-            font-weight: bold;
-            color: #0056b3;
+        th, td {
+            border: 1px solid #e2e8f0;
         }
-        .section-title {
-            font-weight: bold;
-            text-decoration: underline;
-            margin-top: 10px;
-            margin-bottom: 5px;
+        .header-title {
+            text-align: center;
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+        }
+        .header-description {
+            text-align: center;
+            color: #4b5563;
+            margin-bottom: 1.5rem;
+        }
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        .label {
             display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        .select, .input-text {
+            display: block;
+            width: 100%;
+            padding-left: 0.75rem;
+            padding-right: 2.5rem;
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            font-size: 0.875rem;
+            color: #1f2937;
+            background-color: white;
+            transition: all 0.2s ease-in-out;
+        }
+        .select:focus, .input-text:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); /* ring-blue-500 equivalent */
+            border-color: #3b82f6; /* focus:border-blue-500 */
+        }
+        .simulate-button {
+            padding: 0.75rem 1.5rem;
+            background-color: #2563eb;
+            color: white;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.2s ease-in-out;
+        }
+        .simulate-button:hover {
+            background-color: #1d4ed8;
+        }
+        .simulate-button:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5), 0 0 0 4px rgba(59, 130, 246, 0.2); /* ring-2 focus:ring-blue-500 focus:ring-offset-2 equivalent */
+        }
+        .main-card {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 4xl;
+            margin-bottom: 2rem;
+            border: 1px solid #e5e7eb;
+        }
+        .results-card {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 6xl;
+            margin-top: 2rem;
+            border: 1px solid #e5e7eb;
+        }
+        .results-title {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+        }
+        .error-message {
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin-top: 1rem;
+            font-weight: 600;
+            text-align: center;
         }
     </style>
 </head>
-<body>
-    <h1>CUBE Dial Plan Visualizer Lab - Full Flows</h1>
-    <div id="controls">
-        <button onclick="simulateCall('zoomToCUCM')">Simulate: Zoom ➝ CUCM (Internal)</button>
-        <button onclick="simulateCall('cucmToZoom')">Simulate: CUCM ➝ Zoom (Internal)</button>
-        <button onclick="simulateCall('zoomToITSP')">Simulate: Zoom ➝ ITSP (Outbound PSTN)</button>
-        <button onclick="simulateCall('itspToZoom')">Simulate: ITSP ➝ Zoom (Inbound DID)</button>
-        <button onclick="simulateCall('cucmToITSP')">Simulate: CUCM ➝ ITSP (Outbound PSTN)</button>
-        <button onclick="simulateCall('itspToCUCM')">Simulate: ITSP ➝ CUCM (Inbound DID)</button>
-    </div>
-    <div id="canvasContainer">
-        <canvas id="dialPlanCanvas" width="800" height="450"></canvas>
-    </div>
-    <h2>Call Flow Details:</h2>
-    <div id="callDetails">
-        Click a button above to start a call simulation.
+<body class="min-h-screen p-4 sm:p-6 lg:p-8 flex flex-col items-center">
+
+    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8 border border-gray-200">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-blue-800 mb-6 text-center">
+          CUBE Call Flow Simulator 📞
+        </h1>
+
+        <div class="mb-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <h2 class="text-xl font-semibold text-blue-700 mb-3">Guide for Lab Engineers 🧑‍💻</h2>
+          <p class="text-sm text-gray-700 leading-relaxed mb-3">
+            Use this simulator to test call flows based on the "Calling Plan Testing Matrix" scenarios below.
+            Enter the "Calling Number" and "Called Number" for a specific scenario, then click "Simulate Call Flow" to see the CUBE's routing and translation logic in action.
+          </p>
+          <ul class="list-disc list-inside text-sm text-gray-700 space-y-1">
+            <li><strong>Calling Number:</strong> The number originating the call (e.g., `101001`, `301001`, `+16205558080`).</li>
+            <li><strong>Called Number:</strong> The number being dialed (e.g., `301001`, `101001`, `+1234567890`).</li>
+            <li><strong>Output:</strong> Displays the detected inbound/outbound dial-peers and any number translations applied.</li>
+          </ul>
+        </div>
+
+        <!-- Calling Plan Testing Matrix Table -->
+        <div class="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-200 overflow-x-auto">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Calling Plan Testing Matrix 📋</h2>
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-100">
+              <tr>
+                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Scenario #
+                </th>
+                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Calling Platform
+                </th>
+                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Called Platform
+                </th>
+                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Calling Number (Example)
+                </th>
+                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Called Number (Example)
+                </th>
+                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Description & Path
+                </th>
+                <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody id="matrixTableBody" class="bg-white divide-y divide-gray-200">
+              <!-- Rows will be populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <!-- Input Section -->
+          <div class="bg-gray-50 p-6 rounded-lg shadow-inner border border-gray-200">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Input Call Details 👇</h3>
+            <div class="space-y-4">
+              <div>
+                <label for="originatingSystemInput" class="block text-sm font-medium text-gray-700 mb-2">
+                  Originating System 🚀
+                </label>
+                <select
+                  id="originatingSystemInput"
+                  class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm"
+                >
+                  <option value="Zoom Phone">Zoom Phone</option>
+                  <option value="CUCM">CUCM</option>
+                  <option value="PSTN (ITSP)">PSTN (ITSP)</option>
+                </select>
+              </div>
+              <div>
+                <label for="callingNumberInput" class="block text-sm font-medium text-gray-700 mb-2">
+                  Calling Number (CPN) 🗣️
+                </label>
+                <input
+                  type="text"
+                  id="callingNumberInput"
+                  placeholder="e.g., 101001 or +16205558080"
+                  class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out"
+                />
+              </div>
+              <div>
+                <label for="calledNumberInput" class="block text-sm font-medium text-gray-700 mb-2">
+                  Called Number (CDPN) 📞
+                </label>
+                <input
+                  type="text"
+                  id="calledNumberInput"
+                  placeholder="e.g., 301001 or +1234567890"
+                  class="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out"
+                />
+              </div>
+            </div>
+            <button
+              id="simulateButton"
+              class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md shadow-md transition duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Simulate Call Flow ✨
+            </button>
+          </div>
+
+          <!-- Simulation Results (Visual Flow) -->
+          <div class="bg-gray-50 p-6 rounded-lg shadow-inner border border-gray-200">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Call Flow Visualization 🗺️</h3>
+            <div id="visualFlowOutput" class="flex flex-row items-start space-x-4 overflow-x-auto p-4">
+              <p class="text-center text-gray-500 w-full">Simulate a call to see the flow graphic.</p>
+            </div>
+             <div id="visualFlowError" class="flow-box bg-red-100 border-red-500 text-red-700 text-sm font-semibold flex-shrink-0 hidden mt-4">
+                <!-- Error will be displayed here -->
+            </div>
+             <div id="visualFlowWarning" class="flow-box bg-yellow-100 border-yellow-500 text-yellow-700 text-sm font-semibold flex-shrink-0 hidden mt-4">
+                <!-- Warning will be displayed here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Textual Simulation Results (for more detailed steps) -->
+        <div class="mt-8 p-6 bg-gray-50 rounded-lg border border-gray-200 shadow-inner">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Detailed Simulation Steps 📋</h2>
+          <div id="detailedResultsOutput" class="space-y-3">
+            <p class="text-center text-gray-500">No steps to display yet.</p>
+          </div>
+        </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('dialPlanCanvas');
-        const ctx = canvas.getContext('2d');
-        const callDetailsDiv = document.getElementById('callDetails');
-
-        // --- Configuration Data (Simplified & Aligned from your CUBE config) ---
-        const config = {
-            entities: {
-                zoom: { x: 100, y: 100, label: 'Zoom Cloud', color: '#87CEEB' },
-                cucm: { x: 700, y: 100, label: 'CUCM Cluster', color: '#FFA07A' },
-                itsp: { x: 100, y: 350, label: 'ITSP (PSTN)', color: '#90EE90' },
-                cube: { x: 400, y: 225, label: 'Cisco CUBE', color: '#DDA0DD' }
+        // Simplified CUBE Configuration Data (aligned with your latest 'show run' and new strategy)
+        const cubeConfig = {
+            uriClasses: {
+                'ZOOM': ['144.195.121.212', '206.247.121.212'],
+                'CUCM': ['192.168.210.21', '10.99.99.3'], // Added 10.99.99.3 for CUCM redundancy
+                'ITSP': ['192.168.130.5'],
             },
-            interfaces: {
-                wan: { ip: '192.168.130.6', subnet: '/24', label: 'GigabitEthernet1 (WAN)' },
-                lan: { ip: '192.168.210.9', subnet: '/24', label: 'GigabitEthernet2 (LAN)' }
-            },
-            dialPeers: {
-                // Outbound from CUBE
-                'OUT_ZOOM_TO_CUCM': { description: 'OUT_ZOOM_TO_CUCM', dp: '1010', dir: 'out', source: 'cube', dest: 'cucm', destinationPattern: '1001', translationProfile: 'IN_ZOOM_TO_CUCM', sessionTarget: 'server-group 200', bindIp: '192.168.210.9', port: '5080 (UDP)' },
-                'OUT_CUCM_TO_ZOOM': { description: 'OUT_CUCM_TO_ZOOM', dp: '2010', dir: 'out', source: 'cube', dest: 'zoom', destinationPattern: '1001', translationProfile: 'OUT_CUCM_TO_ZOOM', sessionTarget: 'server-group 100', bindIp: '192.168.130.6', port: '5061 (TLS)' },
-                'OUT_ZOOM_TO_ITSP': { description: 'OUT_ZOOM_TO_ITSP', dp: '1100', dir: 'out', source: 'cube', dest: 'itsp', destinationPattern: '+1[2-9]..[2-9]......', translationProfile: 'OUT_ZOOM_TO_PSTN', sessionTarget: 'server-group 300', bindIp: '192.168.130.6', port: '5070 (UDP)' },
-                'OUT_CUCM_TO_ITSP': { description: 'OUT_CUCM_TO_ITSP', dp: '2100', dir: 'out', source: 'cube', dest: 'itsp', destinationPattern: '+1[2-9]..[2-9]......', translationProfile: 'OUT_CUCM_TO_PSTN', sessionTarget: 'server-group 300', bindIp: '192.168.130.6', port: '5070 (UDP)' },
-
-                // Inbound to CUBE
-                'IN_ZOOM_TO_CUBE': { description: 'IN_ZOOM_TO_CUBE', dp: '1000', dir: 'in', source: 'zoom', dest: 'cube', incomingNumber: '^7....', sessionTarget: 'server-group 100', bindIp: '192.168.130.6', port: '5061 (TLS)' },
-                'IN_CUCM_TO_CUBE': { description: 'IN_CUCM_TO_CUBE', dp: '2000', dir: 'in', source: 'cucm', dest: 'cube', incomingNumber: '^7....', sessionTarget: 'server-group 200', bindIp: '192.168.210.9', port: '5080 (UDP)' },
-                'IN_ITSP_TO_CUBE': { description: 'IN_ITSP_TO_CUBE', dp: '3000', dir: 'in', source: 'itsp', dest: 'cube', incomingNumber: '^\\+1', sessionTarget: 'server-group 300', bindIp: '192.168.130.6', port: '5070 (UDP)' },
-
-                // Specific inbound routing FROM CUBE (These are effectively outbound dial-peers from CUBE's perspective)
-                'ITSP_TO_ZOOM_ROUTE': { description: 'IN_ITSP_TO_ZOOM (Route DP)', dp: '3010', dir: 'out', source: 'cube', dest: 'zoom', destinationPattern: '1001', translationProfile: 'IN_PSTN_TO_ZOOM', sessionTarget: 'server-group 100', bindIp: '192.168.130.6', port: '5061 (TLS)' },
-                'ITSP_TO_CUCM_ROUTE': { description: 'IN_ITSP_TO_CUCM (Route DP)', dp: '3020', dir: 'out', source: 'cube', dest: 'cucm', destinationPattern: '1001', translationProfile: 'IN_PSTN_TO_CUCM', sessionTarget: 'server-group 200', bindIp: '192.168.210.9', port: '5080 (UDP)' }
+            e164PatternMaps: {
+                '101': /^301\d{3}$/, // Matches 301 followed by any 3 digits for CUCM internal
+                '201': /^101\d{3}$/, // Matches 101 followed by any 3 digits for Zoom internal
+                '110': /^\+1[2-9]\d{2}[2-9]\d{6}$/, // Standard NA 10-digit E.164 (e.g., +14085551234)
+                '210': /^\+1[2-9]\d{2}[2-9]\d{6}$/, // Standard NA 10-digit E.164 (same as 110, for CUCM outbound)
+                '301': /^\+1620555\d{4}$/, // Matches +1620555XXXX for Zoom DIDs
+                '302': /^\+13035553\d{3}$/, // Matches +13035553XXX for CUCM DIDs
             },
             translationRules: {
-                'IN_ZOOM_TO_CUCM': {
-                    description: 'Strip \'7\' prefix from Zoom calling number for CUCM',
-                    rules: [
-                        { pattern: /^7(....)$/, replacement: '$1', type: 'calling' }
+                '105': { type: 'calling', pattern: /\+16205558080/, replace: '108080' }, // Specific Zoom DID to internal for CUCM
+                '210': { type: 'calling', pattern: /301001/, replace: '+13035553001' }, // CUCM internal to +E.164
+                '301': { type: 'called', pattern: /^\+1620555(\d{4})$/, replace: '101$1' }, // PSTN DID to Zoom internal
+                '302': { type: 'called', pattern: /^\+13035553(\d{3})$/, replace: '301$1' }, // PSTN DID to CUCM internal
+            },
+            translationProfiles: {
+                'IN_PSTN_TO_CUCM': { target: 'called', rule: '302' },
+                'IN_PSTN_TO_ZOOM': { target: 'called', rule: '301' },
+                'OUT_CUCM_TO_PSTN': { target: 'calling', rule: '210' },
+                'OUT_ZOOM_TO_CUCM_CPN': { target: 'calling', rule: '105' },
+            },
+            dialPeers: [
+                {
+                    id: 1000, description: 'IN_ZOOM_TO_CUBE (Primary ingress from Zoom)', type: 'inbound', incomingUriVia: 'ZOOM',
+                    sipTenant: 100, oksProfile: 100, rtpSrtp: true, transportTls: true
+                },
+                {
+                    id: 1010, description: 'OUT_ZOOM_TO_CUCM (Zoom 101XXX to CUCM 301XXX internal)', type: 'outbound', destinationE164PatternMap: '101',
+                    sipTenant: 200, oksProfile: 200, // CUCM tenant
+                    translationProfiles: [
+                        { type: 'outgoing', profile: 'OUT_ZOOM_TO_CUCM_CPN' } // Applied to calling number for CUCM display
                     ]
                 },
-                'OUT_CUCM_TO_ZOOM': {
-                    description: 'Prepend \'EXT-\' to CUCM calling number for Zoom display',
-                    rules: [
-                        { pattern: /^(.*)$/, replacement: 'EXT-$1', type: 'calling' }
+                {
+                    id: 1100, description: 'OUT_ZOOM_TO_ITSP (Zoom to PSTN - CPN Passthrough)', type: 'outbound', destinationE164PatternMap: '110',
+                    sipTenant: 300, oksProfile: 300 // ITSP tenant
+                },
+                {
+                    id: 2000, description: 'IN_CUCM_TO_CUBE (Primary ingress from CUCM)', type: 'inbound', incomingUriVia: 'CUCM',
+                    sipTenant: 200, oksProfile: 200
+                },
+                {
+                    id: 2010, description: 'OUT_CUCM_TO_ZOOM (CUCM 301XXX to Zoom 101XXX internal)', type: 'outbound', destinationE164PatternMap: '201',
+                    sipTenant: 100, oksProfile: 100, rtpSrtp: true, transportTls: true // Zoom tenant
+                },
+                {
+                    id: 2100, description: 'OUT_CUCM_TO_ITSP (CUCM 301XXX to PSTN)', type: 'outbound', destinationE164PatternMap: '110', // Destination is 110 (PSTN E.164)
+                    sipTenant: 300, oksProfile: 300, // ITSP tenant
+                    translationProfiles: [
+                        { type: 'outgoing', profile: 'OUT_CUCM_TO_PSTN' }
                     ]
                 },
-                'OUT_ZOOM_TO_PSTN': {
-                    description: 'No specific translation for Zoom to PSTN (assuming E.164 pass-through)',
-                    rules: [
-                        { pattern: /^$/, replacement: '&', type: 'calling' } // Pass-through
-                    ]
+                {
+                    id: 3000, description: 'IN_ITSP_TO_CUBE (Primary ingress from ITSP)', type: 'inbound', incomingUriVia: 'ITSP',
+                    sipTenant: 300, oksProfile: 300
                 },
-                'OUT_CUCM_TO_PSTN': {
-                    description: 'No specific translation for CUCM to PSTN (assuming E.164 pass-through)',
-                    rules: [
-                        { pattern: /^$/, replacement: '&', type: 'calling' } // Pass-through
-                    ]
+                {
+                    id: 3010, description: 'IN_ITSP_TO_ZOOM (PSTN DID to Zoom 101XXX)', type: 'outbound', incomingCalledNumberMatch: /^\+1620555\d{4}$/, // Matches specific DID range for Zoom
+                    sipTenant: 100, oksProfile: 100, rtpSrtp: true, transportTls: true, // Zoom tenant
+                    translationProfiles: [{ type: 'outgoing', profile: 'IN_PSTN_TO_ZOOM' }]
                 },
-                'IN_PSTN_TO_ZOOM': {
-                    description: 'Convert PSTN DID to internal 4-digit extension for Zoom',
-                    rules: [
-                        { pattern: /^\+16205551001$/, replacement: '1001', type: 'called' }
-                    ]
+                {
+                    id: 3020, description: 'IN_ITSP_TO_CUCM (PSTN DID to CUCM 301XXX)', type: 'outbound', incomingCalledNumberMatch: /^\+13035553\d{3}$/, // Matches specific DID range for CUCM
+                    sipTenant: 200, oksProfile: 200, // CUCM tenant
+                    translationProfiles: [{ type: 'outgoing', profile: 'IN_PSTN_TO_CUCM' }]
                 },
-                'IN_PSTN_TO_CUCM': {
-                    description: 'Convert PSTN DID to internal 4-digit extension for CUCM',
-                    rules: [
-                        { pattern: /^\+16205552001$/, replacement: '1001', type: 'called' }
-                    ]
-                }
-            }
+            ]
         };
 
-        // --- Drawing Functions ---
-        function drawEntity(entity) {
-            ctx.fillStyle = entity.color;
-            ctx.fillRect(entity.x - 75, entity.y - 30, 150, 60);
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(entity.x - 75, entity.y - 30, 150, 60);
-            ctx.fillStyle = '#000';
-            ctx.textAlign = 'center';
-            ctx.font = '14px Arial';
-            ctx.fillText(entity.label, entity.x, entity.y - 10);
-            if (entity.label === 'Cisco CUBE') {
-                ctx.font = '10px Arial';
-                ctx.fillText(config.interfaces.wan.label, entity.x - 45, entity.y + 15);
-                ctx.fillText(config.interfaces.lan.label, entity.x + 45, entity.y + 15);
+        // Calling Plan Testing Matrix Data - identical to React version
+        const callingPlanMatrixData = [
+            { id: 1, callingPlatform: 'Zoom Phone', calledPlatform: 'CUCM', callingNumber: '101001', calledNumber: '301001', description: 'Internal call from Zoom to CUCM extension.', cubePath: 'IN_ZOOM_TO_CUBE (1000) ➡️ OUT_ZOOM_TO_CUCM (1010)', status: 'Success' },
+            { id: 2, callingPlatform: 'CUCM', calledPlatform: 'Zoom Phone', callingNumber: '301001', calledNumber: '101001', description: 'Internal call from CUCM to Zoom extension.', cubePath: 'IN_CUCM_TO_CUBE (2000) ➡️ OUT_CUCM_TO_ZOOM (2010)', status: 'Success' },
+            { id: 3, callingPlatform: 'Zoom Phone', calledPlatform: 'PSTN', callingNumber: '+16205558080', calledNumber: '+1234567890', description: 'Outbound call from Zoom to Public Switched Telephone Network (PSTN). CPN passed through.', cubePath: 'IN_ZOOM_TO_CUBE (1000) ➡️ OUT_ZOOM_TO_ITSP (1100)', status: 'Success' },
+            { id: 4, callingPlatform: 'PSTN (ITSP)', calledPlatform: 'Zoom Phone', callingNumber: '+1234567890', calledNumber: '+16205558080', description: 'Inbound call from PSTN to Zoom. DID translated.', cubePath: 'IN_ITSP_TO_CUBE (3000) ➡️ IN_ITSP_TO_ZOOM (3010)', status: 'Success' },
+            { id: 5, callingPlatform: 'CUCM', calledPlatform: 'PSTN', callingNumber: '301001', calledNumber: '+1234567890', description: 'Outbound call from CUCM to PSTN. CPN translated.', cubePath: 'IN_CUCM_TO_CUBE (2000) ➡️ OUT_CUCM_TO_ITSP (2100)', status: 'Success' },
+            { id: 6, callingPlatform: 'PSTN (ITSP)', calledPlatform: 'CUCM', callingNumber: '+1234567890', calledNumber: '+13035553001', description: 'Inbound call from PSTN to CUCM. DID translated.', cubePath: 'IN_ITSP_TO_CUBE (3000) ➡️ IN_ITSP_TO_CUCM (3020)', status: 'Success' },
+        ];
+
+
+        function applyTranslation(number, ruleId) {
+            const rule = cubeConfig.translationRules[ruleId];
+            if (!rule) {
+                console.warn(`Translation rule ${ruleId} not found. Returning original number.`);
+                return number;
             }
+            const regex = new RegExp(rule.pattern); // Ensure regex is created from string pattern
+            return number.replace(regex, rule.replace);
         }
 
-        function drawArrow(fromX, fromY, toX, toY, color = '#555', highlight = false, text = '') {
-            ctx.strokeStyle = highlight ? 'blue' : color;
-            ctx.lineWidth = highlight ? 3 : 1;
-            ctx.beginPath();
-            ctx.moveTo(fromX, fromY);
-            ctx.lineTo(toX, toY);
-            ctx.stroke();
-
-            // Arrowhead
-            const headlen = 10;
-            const angle = Math.atan2(toY - fromY, toX - fromX);
-            ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
-            ctx.moveTo(toX, toY);
-            ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
-            ctx.stroke();
-
-            // Text label for the arrow
-            if (text) {
-                ctx.fillStyle = '#000';
-                ctx.font = '10px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                const midX = (fromX + toX) / 2;
-                const midY = (fromY + toY) / 2;
-                ctx.fillText(text, midX, midY - 10);
-            }
+        function createFlowBox(content, bgColorClass = 'bg-gray-100', borderColorClass = 'border-gray-300') {
+            const div = document.createElement('div');
+            div.className = `flow-box ${bgColorClass} ${borderColorClass}`;
+            div.innerHTML = content;
+            return div;
         }
 
-        function drawAllElements(highlightedComponent = null) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
-
-            // Draw entities
-            for (const key in config.entities) {
-                drawEntity(config.entities[key]);
-            }
-
-            // Draw connections with specific CUBE interface points
-            const { zoom, cucm, itsp, cube } = config.entities;
-            const cubeWanPoint = { x: cube.x - 75, y: cube.y - 50 }; // Left side for WAN
-            const cubeLanPoint = { x: cube.x + 75, y: cube.y - 50 }; // Right side for LAN (to CUCM)
-            const cubeItspPoint = { x: cube.x - 75, y: cube.y + 50 }; // Lower left for ITSP
-
-            // Zoom <-> CUBE WAN
-            drawArrow(zoom.x + 75, zoom.y, cubeWanPoint.x, cubeWanPoint.y, '#555', highlightedComponent === 'zoom-cube-wan', 'WAN Link');
-            drawArrow(cubeWanPoint.x, cubeWanPoint.y, zoom.x + 75, zoom.y, '#555', highlightedComponent === 'cube-wan-zoom', 'WAN Link');
-
-            // CUCM <-> CUBE LAN
-            drawArrow(cucm.x - 75, cucm.y, cubeLanPoint.x, cubeLanPoint.y, '#555', highlightedComponent === 'cucm-cube-lan', 'LAN Link');
-            drawArrow(cubeLanPoint.x, cubeLanPoint.y, cucm.x - 75, cucm.y, '#555', highlightedComponent === 'cube-lan-cucm', 'LAN Link');
-
-            // ITSP <-> CUBE WAN (bottom)
-            drawArrow(itsp.x + 75, itsp.y, cubeItspPoint.x, cubeItspPoint.y, '#555', highlightedComponent === 'itsp-cube-wan', 'WAN Link');
-            drawArrow(cubeItspPoint.x, cubeItspPoint.y, itsp.x + 75, itsp.y, '#555', highlightedComponent === 'cube-wan-itsp', 'WAN Link');
-
-
-            // Highlight CUBE if active
-            if (highlightedComponent && highlightedComponent.includes('cube')) {
-                 ctx.strokeStyle = 'blue';
-                 ctx.lineWidth = 5;
-                 ctx.strokeRect(cube.x - 75, cube.y - 30, 150, 60);
-            }
+        function createFlowArrow(text, icon = '➡️') {
+            const div = document.createElement('div');
+            div.className = `flow-arrow`;
+            div.textContent = `${icon} ${text}`;
+            return div;
         }
 
-        // --- Call Simulation Logic ---
-        let animationFrameId;
-        let callPacket = {
-            x: 0, y: 0, radius: 8, color: 'red', speed: 2,
-            path: [], currentIndex: 0,
-            originalCalled: '', currentCalled: '',
-            originalCalling: '', currentCalling: ''
-        };
-
-        function animateCall() {
-            if (callPacket.currentIndex < callPacket.path.length - 1) {
-                const start = callPacket.path[callPacket.currentIndex];
-                const end = callPacket.path[callPacket.currentIndex + 1];
-
-                const dx = end.x - start.x;
-                const dy = end.y - start.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                const step = callPacket.speed / distance;
-
-                callPacket.x += dx * step;
-                callPacket.y += dy * step;
-
-                if (Math.abs(callPacket.x - end.x) < callPacket.speed && Math.abs(callPacket.y - end.y) < callPacket.speed) {
-                    callPacket.x = end.x;
-                    callPacket.y = end.y;
-                    callPacket.currentIndex++;
-                    processStepAction(callPacket.path[callPacket.currentIndex].action);
-                    updateCallDetails(callPacket.path[callPacket.currentIndex].action);
-                }
-
-                drawAllElements(callPacket.path[callPacket.currentIndex].highlight);
-                ctx.fillStyle = callPacket.color;
-                ctx.beginPath();
-                ctx.arc(callPacket.x, callPacket.y, callPacket.radius, 0, Math.PI * 2);
-                ctx.fill();
-
-                animationFrameId = requestAnimationFrame(animateCall);
-            } else {
-                updateCallDetails({ message: 'Call complete!' });
-                drawAllElements(); // Redraw without highlights
-                cancelAnimationFrame(animationFrameId);
-            }
+        function clearResults() {
+            document.getElementById('visualFlowOutput').innerHTML = '<p class="text-center text-gray-500 w-full">Simulate a call to see the flow graphic.</p>';
+            document.getElementById('detailedResultsOutput').innerHTML = '<p class="text-center text-gray-500">No steps to display yet.</p>';
+            document.getElementById('visualFlowError').classList.add('hidden');
+            document.getElementById('visualFlowWarning').classList.add('hidden');
         }
 
-        function processStepAction(action) {
-            if (action.dialPeer) {
-                const dp = config.dialPeers[action.dialPeer];
-                if (dp.translationProfile) {
-                    const tp = config.translationRules[dp.translationProfile];
-                    tp.rules.forEach(rule => {
-                        if (rule.type === 'calling') {
-                            callPacket.currentCalling = callPacket.currentCalling.replace(rule.pattern, rule.replacement);
-                        } else if (rule.type === 'called') {
-                            callPacket.currentCalled = callPacket.currentCalled.replace(rule.pattern, rule.replacement);
-                        }
-                    });
-                }
-            }
+        function displayError(message) {
+            const errorDiv = document.getElementById('visualFlowError');
+            errorDiv.textContent = '❌ Error: ' + message;
+            errorDiv.classList.remove('hidden');
+            document.getElementById('visualFlowOutput').innerHTML = ''; // Clear flow if error
+            document.getElementById('detailedResultsOutput').innerHTML = '';
         }
 
-        function updateCallDetails(action) {
-            let details = `<span class="section-title">Current Call State:</span>\n${action.message || 'Call in Progress'}\n\n`;
-
-            details += `<span class="section-title">Numbers in Transit:</span>\n`;
-            details += `<span class="highlight">Original Called:</span> ${callPacket.originalCalled}\n`;
-            details += `<span class="highlight">Current Called:</span> ${callPacket.currentCalled}\n`;
-            details += `<span class="highlight">Original Calling:</span> ${callPacket.originalCalling}\n`;
-            details += `<span class="highlight">Current Calling:</span> ${callPacket.currentCalling}\n\n`;
-
-
-            if (action.dialPeer) {
-                const dp = config.dialPeers[action.dialPeer];
-                details += `<span class="section-title">Dial-Peer Matched:</span>\n`;
-                details += `<span class="highlight">Description:</span> ${dp.description} (DP ${dp.dp})\n`;
-                details += `<span class="highlight">Direction:</span> ${dp.dir === 'in' ? 'Incoming' : 'Outgoing'}\n`;
-                details += `<span class="highlight">Matching Logic:</span> ${dp.incomingNumber || dp.destinationPattern}\n`;
-                details += `<span class="highlight">Session Target:</span> ${dp.sessionTarget}\n`;
-                details += `<span class="highlight">Bound IP:</span> ${dp.bindIp || 'Global WAN Bind'}\n`; // Show bind IP
-                details += `<span class="highlight">Session Port:</span> ${dp.port}\n\n`;
-
-
-                if (dp.translationProfile) {
-                    const tp = config.translationRules[dp.translationProfile];
-                    details += `<span class="section-title">Translation Profile Applied:</span>\n`;
-                    details += `<span class="highlight">Profile Name:</span> ${dp.translationProfile}\n`;
-                    details += `<span class="highlight">Description:</span> ${tp.description}\n`;
-                    details += `<span class="highlight">Rules:</span>\n`;
-                    tp.rules.forEach(rule => {
-                        details += `    - Type: ${rule.type}, Pattern: ${rule.pattern}, Replacement: ${rule.replacement}\n`;
-                    });
-                }
-            }
-            callDetailsDiv.innerHTML = details;
+        function displayWarning(message) {
+            const warningDiv = document.getElementById('visualFlowWarning');
+            warningDiv.textContent = '⚠️ Warning: ' + message;
+            warningDiv.classList.remove('hidden');
         }
 
-        function simulateCall(type) {
-            cancelAnimationFrame(animationFrameId); // Stop any ongoing animation
-            callPacket.currentIndex = 0;
-            callPacket.originalCalled = '';
-            callPacket.currentCalled = '';
-            callPacket.originalCalling = '';
-            callPacket.currentCalling = '';
-            callDetailsDiv.innerHTML = 'Starting simulation...';
-            drawAllElements(); // Clear highlights
+        function addDetailedStep(type, message) {
+            const detailedResultsOutput = document.getElementById('detailedResultsOutput');
+            // Clear "No steps to display yet." if it's the first step
+            if (detailedResultsOutput.children.length === 1 && detailedResultsOutput.children[0].textContent === 'No steps to display yet.') {
+                detailedResultsOutput.innerHTML = '';
+            }
 
-            const { zoom, cucm, itsp, cube } = config.entities;
-            const cubeWanPoint = { x: cube.x - 75, y: cube.y - 50 };
-            const cubeLanPoint = { x: cube.x + 75, y: cube.y - 50 };
-            const cubeItspPoint = { x: cube.x - 75, y: cube.y + 50 };
+            const p = document.createElement('p');
+            let icon = '';
+            let textColorClass = 'text-gray-900';
 
             switch (type) {
-                case 'zoomToCUCM':
-                    callPacket.originalCalled = '721001';
-                    callPacket.currentCalled = '721001';
-                    callPacket.originalCalling = '1001'; // Zoom's typical calling number
-                    callPacket.currentCalling = '1001';
-                    callPacket.path = [
-                        { x: zoom.x, y: zoom.y, action: { message: 'Call originated from Zoom Phone.' }, highlight: 'zoom' },
-                        { x: cubeWanPoint.x, y: cubeWanPoint.y, action: { message: `Call reaching CUBE WAN (GigabitEthernet1: ${config.interfaces.wan.ip}) from Zoom.` }, highlight: 'zoom-cube-wan' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE processing inbound call. Incoming via ${config.interfaces.wan.label}.`, dialPeer: 'IN_ZOOM_TO_CUBE' }, highlight: 'cube' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE matching outbound dial-peer to CUCM. Outgoing via ${config.interfaces.lan.label}.`, dialPeer: 'OUT_ZOOM_TO_CUCM' } },
-                        { x: cubeLanPoint.x, y: cubeLanPoint.y, action: { message: `Call sending to CUCM (GigabitEthernet2: ${config.interfaces.lan.ip}).` }, highlight: 'cube-lan-cucm' },
-                        { x: cucm.x, y: cucm.y, action: { message: 'Call delivered to CUCM extension.' }, highlight: 'cucm' }
-                    ];
-                    // Manual adjustment for conceptual translation, if the rule was applied
-                    // For IN_ZOOM_TO_CUCM on 'calling': /^7(....)$/ /\1/
-                    // If originalCalling was '71001', it would become '1001'. For '1001', no change.
+                case 'start':
+                    icon = '🟢';
+                    textColorClass = 'font-semibold';
                     break;
-
-                case 'cucmToZoom':
-                    callPacket.originalCalled = '711001';
-                    callPacket.currentCalled = '711001';
-                    callPacket.originalCalling = '1001'; // CUCM's typical calling number
-                    callPacket.currentCalling = '1001';
-                    callPacket.path = [
-                        { x: cucm.x, y: cucm.y, action: { message: 'Call originated from CUCM.' }, highlight: 'cucm' },
-                        { x: cubeLanPoint.x, y: cubeLanPoint.y, action: { message: `Call reaching CUBE LAN (GigabitEthernet2: ${config.interfaces.lan.ip}) from CUCM.` }, highlight: 'cucm-cube-lan' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE processing inbound call. Incoming via ${config.interfaces.lan.label}.`, dialPeer: 'IN_CUCM_TO_CUBE' }, highlight: 'cube' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE matching outbound dial-peer to Zoom. Outgoing via ${config.interfaces.wan.label}.`, dialPeer: 'OUT_CUCM_TO_ZOOM' } },
-                        { x: cubeWanPoint.x, y: cubeWanPoint.y, action: { message: `Call sending to Zoom (GigabitEthernet1: ${config.interfaces.wan.ip}).` }, highlight: 'cube-wan-zoom' },
-                        { x: zoom.x, y: zoom.y, action: { message: 'Call delivered to Zoom extension.' }, highlight: 'zoom' }
-                    ];
+                case 'inbound':
+                    icon = '⬇️';
+                    textColorClass = 'text-indigo-700 font-medium';
                     break;
-
-                case 'zoomToITSP':
-                    callPacket.originalCalled = '+16205553001';
-                    callPacket.currentCalled = '+16205553001';
-                    callPacket.originalCalling = '1001';
-                    callPacket.currentCalling = '1001';
-                    callPacket.path = [
-                        { x: zoom.x, y: zoom.y, action: { message: 'Call originated from Zoom Phone.' }, highlight: 'zoom' },
-                        { x: cubeWanPoint.x, y: cubeWanPoint.y, action: { message: `Call reaching CUBE WAN (GigabitEthernet1: ${config.interfaces.wan.ip}) from Zoom.` }, highlight: 'zoom-cube-wan' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE processing inbound call. Incoming via ${config.interfaces.wan.label}.`, dialPeer: 'IN_ZOOM_TO_CUBE' }, highlight: 'cube' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE matching outbound dial-peer to ITSP. Outgoing via ${config.interfaces.wan.label}.`, dialPeer: 'OUT_ZOOM_TO_ITSP' } },
-                        { x: cubeItspPoint.x, y: cubeItspPoint.y, action: { message: `Call sending to ITSP (GigabitEthernet1: ${config.interfaces.wan.ip}).` }, highlight: 'cube-wan-itsp' },
-                        { x: itsp.x, y: itsp.y, action: { message: 'Call delivered to PSTN.' }, highlight: 'itsp' }
-                    ];
+                case 'translation_cdpn':
+                    icon = '↔️';
+                    textColorClass = 'text-green-700 font-medium';
                     break;
-
-                case 'itspToZoom':
-                    callPacket.originalCalled = '+16205551001';
-                    callPacket.currentCalled = '+16205551001';
-                    callPacket.originalCalling = '+14085551234'; // Example PSTN calling number
-                    callPacket.currentCalling = '+14085551234';
-                    callPacket.path = [
-                        { x: itsp.x, y: itsp.y, action: { message: 'Call originated from PSTN.' }, highlight: 'itsp' },
-                        { x: cubeItspPoint.x, y: cubeItspPoint.y, action: { message: `Call reaching CUBE WAN (GigabitEthernet1: ${config.interfaces.wan.ip}) from ITSP.` }, highlight: 'itsp-cube-wan' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE processing inbound call. Incoming via ${config.interfaces.wan.label}.`, dialPeer: 'IN_ITSP_TO_CUBE' }, highlight: 'cube' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE matching outbound dial-peer to Zoom. Outgoing via ${config.interfaces.wan.label}.`, dialPeer: 'ITSP_TO_ZOOM_ROUTE' } },
-                        { x: cubeWanPoint.x, y: cubeWanPoint.y, action: { message: `Call sending to Zoom (GigabitEthernet1: ${config.interfaces.wan.ip}).` }, highlight: 'cube-wan-zoom' },
-                        { x: zoom.x, y: zoom.y, action: { message: 'Call delivered to Zoom extension.' }, highlight: 'zoom' }
-                    ];
+                case 'outbound':
+                    icon = '⬆️';
+                    textColorClass = 'text-indigo-700 font-medium';
                     break;
-
-                case 'cucmToITSP':
-                    callPacket.originalCalled = '+16205553001';
-                    callPacket.currentCalled = '+16205553001';
-                    callPacket.originalCalling = '1001';
-                    callPacket.currentCalling = '1001';
-                    callPacket.path = [
-                        { x: cucm.x, y: cucm.y, action: { message: 'Call originated from CUCM.' }, highlight: 'cucm' },
-                        { x: cubeLanPoint.x, y: cubeLanPoint.y, action: { message: `Call reaching CUBE LAN (GigabitEthernet2: ${config.interfaces.lan.ip}) from CUCM.` }, highlight: 'cucm-cube-lan' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE processing inbound call. Incoming via ${config.interfaces.lan.label}.`, dialPeer: 'IN_CUCM_TO_CUBE' }, highlight: 'cube' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE matching outbound dial-peer to ITSP. Outgoing via ${config.interfaces.wan.label}.`, dialPeer: 'OUT_CUCM_TO_ITSP' } },
-                        { x: cubeItspPoint.x, y: cubeItspPoint.y, action: { message: `Call sending to ITSP (GigabitEthernet1: ${config.interfaces.wan.ip}).` }, highlight: 'cube-wan-itsp' },
-                        { x: itsp.x, y: itsp.y, action: { message: 'Call delivered to PSTN.' }, highlight: 'itsp' }
-                    ];
+                case 'translation_cpn':
+                    icon = '↔️';
+                    textColorClass = 'text-green-700 font-medium';
                     break;
-
-                case 'itspToCUCM':
-                    callPacket.originalCalled = '+16205552001';
-                    callPacket.currentCalled = '+16205552001';
-                    callPacket.originalCalling = '+14085551234';
-                    callPacket.currentCalling = '+14085551234';
-                    callPacket.path = [
-                        { x: itsp.x, y: itsp.y, action: { message: 'Call originated from PSTN.' }, highlight: 'itsp' },
-                        { x: cubeItspPoint.x, y: cubeItspPoint.y, action: { message: `Call reaching CUBE WAN (GigabitEthernet1: ${config.interfaces.wan.ip}) from ITSP.` }, highlight: 'itsp-cube-wan' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE processing inbound call. Incoming via ${config.interfaces.wan.label}.`, dialPeer: 'IN_ITSP_TO_CUBE' }, highlight: 'cube' },
-                        { x: cube.x, y: cube.y, action: { message: `CUBE matching outbound dial-peer to CUCM. Outgoing via ${config.interfaces.lan.label}.`, dialPeer: 'ITSP_TO_CUCM_ROUTE' } },
-                        { x: cubeLanPoint.x, y: cubeLanPoint.y, action: { message: `Call sending to CUCM (GigabitEthernet2: ${config.interfaces.lan.ip}).` }, highlight: 'cube-lan-cucm' },
-                        { x: cucm.x, y: cucm.y, action: { message: 'Call delivered to CUCM extension.' }, highlight: 'cucm' }
-                    ];
+                case 'final':
+                    icon = '🏁';
+                    textColorClass = 'text-blue-800 font-semibold';
+                    break;
+                case 'error':
+                    icon = '❌';
+                    textColorClass = 'text-red-600 font-semibold';
+                    break;
+                case 'warning':
+                    icon = '⚠️';
+                    textColorClass = 'text-yellow-700';
+                    break;
+                case 'info':
+                    icon = 'ℹ️';
+                    textColorClass = 'text-blue-500';
                     break;
             }
 
-            // Start animation
-            callPacket.x = callPacket.path[0].x;
-            callPacket.y = callPacket.path[0].y;
-            updateCallDetails(callPacket.path[0].action);
-            animateCall();
+            p.className = `text-sm ${textColorClass} flex items-start`;
+            p.innerHTML = `<span class="mr-2 text-2xl">${icon}</span>${message}`;
+            detailedResultsOutput.appendChild(p);
         }
 
-        // Initial draw
-        drawAllElements();
+        function simulateCall() {
+            clearResults(); // Clear previous results and error/warning messages
+
+            let currentCpn = document.getElementById('callingNumberInput').value.trim();
+            let currentCdpn = document.getElementById('calledNumberInput').value.trim();
+            const originatingSystem = document.getElementById('originatingSystemInput').value;
+            const visualFlowOutput = document.getElementById('visualFlowOutput');
+            visualFlowOutput.innerHTML = ''; // Clear "Simulate a call..." text
+
+            addDetailedStep('start', `Call initiated: CPN: ${currentCpn} 📞, CDPN: ${currentCdpn} ☎️`);
+
+            // --- Initial Platform Box ---
+            visualFlowOutput.appendChild(createFlowBox(
+                `<p class="font-semibold text-blue-800">Origin: ${originatingSystem}</p>` +
+                `<p class="text-sm">CPN: ${currentCpn}</p>` +
+                `<p class="text-sm">CDPN: ${currentCdpn}</p>`,
+                'bg-blue-200', 'border-blue-500'
+            ));
+            visualFlowOutput.appendChild(createFlowArrow('Incoming Call'));
+
+            // --- Step 1: Identify Ingress Dial-Peer ---
+            let ingressDp = null;
+            const possibleIngressDps = cubeConfig.dialPeers.filter(dp => dp.type === 'inbound');
+
+            for (const dp of possibleIngressDps) {
+                if (dp.incomingUriVia === 'ZOOM' && originatingSystem === 'Zoom Phone') {
+                    ingressDp = dp;
+                    break;
+                }
+                if (dp.incomingUriVia === 'CUCM' && originatingSystem === 'CUCM') {
+                    ingressDp = dp;
+                    break;
+                }
+                if (dp.incomingUriVia === 'ITSP' && originatingSystem === 'PSTN (ITSP)') {
+                    ingressDp = dp;
+                    break;
+                }
+            }
+
+            if (!ingressDp) {
+                displayError('No matching Ingress Dial-Peer found for the originating system. Check originating system selection.');
+                return;
+            }
+
+            visualFlowOutput.appendChild(createFlowBox(
+                `<p class="font-semibold text-blue-800">CUBE Ingress DP: ${ingressDp.id}</p>` +
+                `<p class="text-xs text-gray-700">${ingressDp.description}</p>` +
+                `<p class="text-sm">CPN: ${currentCpn}</p>` +
+                `<p class="text-sm">CDPN: ${currentCdpn}</p>` +
+                `<p class="text-xs text-gray-600">Sec: ${ingressDp.transportTls ? 'TLS' : 'Non-Secure'} / ${ingressDp.rtpSrtp ? 'SRTP' : 'RTP'}</p>`,
+                'bg-blue-200', 'border-blue-500'
+            ));
+            addDetailedStep('inbound', `⬇️ Inbound DP: ${ingressDp.id} (${ingressDp.description})`);
+
+            visualFlowOutput.appendChild(createFlowArrow('CUBE Processing'));
+
+            // --- Step 2: Identify Outbound Dial-Peer ---
+            let outboundDp = null;
+            const possibleOutboundDps = cubeConfig.dialPeers.filter(dp => dp.type === 'outbound');
+
+            if (originatingSystem === 'PSTN (ITSP)') {
+                const sortedItspDps = possibleOutboundDps
+                    .filter(dp => dp.incomingCalledNumberMatch && dp.incomingCalledNumberMatch.test(currentCdpn))
+                    .sort((a, b) => b.incomingCalledNumberMatch.source.length - a.incomingCalledNumberMatch.source.length);
+                outboundDp = sortedItspDps[0];
+                if (sortedItspDps.length > 1) {
+                    displayWarning(`Multiple inbound/outbound DPs matched for PSTN (ITSP) incoming. Selected ${outboundDp.id}.`);
+                }
+            } else {
+                const sortedOutboundDps = possibleOutboundDps
+                    .filter(dp => dp.destinationE164PatternMap &&
+                                  cubeConfig.e164PatternMaps[dp.destinationE164PatternMap] &&
+                                  cubeConfig.e164PatternMaps[dp.destinationE164PatternMap].test(currentCdpn))
+                    .sort((a, b) => cubeConfig.e164PatternMaps[b.destinationE164PatternMap].source.length - cubeConfig.e164PatternMaps[a.destinationE164PatternMap].source.length);
+
+                if (originatingSystem === 'Zoom Phone') {
+                    outboundDp = sortedOutboundDps.find(dp => dp.id === 1100) || sortedOutboundDps[0];
+                } else if (originatingSystem === 'CUCM') {
+                    outboundDp = sortedOutboundDps.find(dp => dp.id === 2100) || sortedOutboundDps[0];
+                } else {
+                     outboundDp = sortedOutboundDps[0];
+                }
+
+                if (sortedOutboundDps.length > 1) {
+                    displayWarning(`Multiple outbound DPs matched for ${originatingSystem} outgoing. Selected ${outboundDp.id}.`);
+                }
+            }
+
+            if (!outboundDp) {
+                displayError('No matching Outbound Dial-Peer found for the Called Number. Check CDPN and routing patterns.');
+                return;
+            }
+
+            // --- Step 3: Apply Translations (Incoming and Outgoing on Outbound DP) ---
+            let translationsContent = '<p class="font-semibold text-gray-800">Translations Applied:</p>';
+            let hasTranslation = false;
+            let cpnTranslatedOriginal = null;
+            let cdpnTranslatedOriginal = null;
+
+
+            if (outboundDp.translationProfiles) {
+                for (const tp of outboundDp.translationProfiles) {
+                    const profile = cubeConfig.translationProfiles[tp.profile];
+                    if (profile) {
+                        const rule = cubeConfig.translationRules[profile.rule];
+                        if (rule) {
+                            let oldNum = '';
+                            let newNum = '';
+                            let targetType = profile.target;
+
+                            if (targetType === 'called') {
+                                oldNum = currentCdpn;
+                                newNum = applyTranslation(currentCdpn, profile.rule);
+                                if (oldNum !== newNum) {
+                                    currentCdpn = newNum; // Apply the translation
+                                    cdpnTranslatedOriginal = oldNum;
+                                    translationsContent += `<p class="text-sm text-green-700">CDPN: ${oldNum} ➡️ ${newNum} (by ${tp.profile} ${tp.type} leg)</p>`;
+                                    addDetailedStep('translation_cdpn', `🔄 CDPN Translated (${tp.type} leg) by "${tp.profile}" (rule ${profile.rule}). Old: ${oldNum} ➡️ New: ${newNum}`);
+                                    hasTranslation = true;
+                                } else {
+                                     addDetailedStep('info', `ℹ️ No CDPN translation by "${tp.profile}" (${tp.type} leg).`);
+                                }
+                            } else if (targetType === 'calling') {
+                                oldNum = currentCpn;
+                                newNum = applyTranslation(currentCpn, profile.rule);
+                                if (oldNum !== newNum) {
+                                    currentCpn = newNum; // Apply the translation
+                                    cpnTranslatedOriginal = oldNum;
+                                    translationsContent += `<p class="text-sm text-green-700">CPN: ${oldNum} ➡️ ${newNum} (by ${tp.profile} ${tp.type} leg)</p>`;
+                                    addDetailedStep('translation_cpn', `🔄 CPN Translated (${tp.type} leg) by "${tp.profile}" (rule ${profile.rule}). Old: ${oldNum} ➡️ New: ${newNum}`);
+                                    hasTranslation = true;
+                                } else {
+                                     addDetailedStep('info', `ℹ️ No CPN translation by "${tp.profile}" (${tp.type} leg).`);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!hasTranslation) {
+                translationsContent += `<p class="text-sm text-gray-600">No translations applied on this step.</p>`;
+            }
+
+            visualFlowOutput.appendChild(createFlowBox(translationsContent, hasTranslation ? 'bg-green-100' : 'bg-gray-100', hasTranslation ? 'border-green-500' : 'border-gray-300'));
+
+            visualFlowOutput.appendChild(createFlowArrow('Outgoing Call'));
+
+            // CUBE Egress DP
+            visualFlowOutput.appendChild(createFlowBox(
+                `<p class="font-semibold text-blue-800">CUBE Egress DP: ${outboundDp.id}</p>` +
+                `<p class="text-xs text-gray-700">${outboundDp.description}</p>` +
+                `<p class="text-sm">CPN: ${currentCpn}</p>` +
+                `<p class="text-sm">CDPN: ${currentCdpn}</p>` +
+                `<p class="text-xs text-gray-600">Sec: ${outboundDp.transportTls ? 'TLS' : 'Non-Secure'} / ${outboundDp.rtpSrtp ? 'SRTP' : 'RTP'}</p>`,
+                'bg-blue-200', 'border-blue-500'
+            ));
+            addDetailedStep('outbound', `⬆️ Outbound DP: ${outboundDp.id} (${outboundDp.description})`);
+
+            visualFlowOutput.appendChild(createFlowArrow('Call Delivered', '✅'));
+
+            // --- Step 4: Final Destination ---
+            let destinationSystem = '';
+            if (outboundDp.description.includes('CUCM')) destinationSystem = 'CUCM';
+            else if (outboundDp.description.includes('Zoom')) destinationSystem = 'Zoom Phone';
+            else if (outboundDp.description.includes('ITSP')) destinationSystem = 'PSTN (ITSP)';
+
+            visualFlowOutput.appendChild(createFlowBox(
+                `<p class="font-semibold text-blue-800">Destination: ${destinationSystem}</p>` +
+                `<p class="text-sm">CPN: ${currentCpn}</p>` +
+                `<p class="text-sm">CDPN: ${currentCdpn}</p>`,
+                'bg-blue-200', 'border-blue-500'
+            ));
+            addDetailedStep('final', `🏁 Final Call State: CPN: ${currentCpn} 📞, CDPN: ${currentCdpn} ☎️`);
+        }
+
+        // --- DOM Elements and Event Listeners ---
+        const callingNumberInput = document.getElementById('callingNumberInput');
+        const calledNumberInput = document.getElementById('calledNumberInput');
+        const originatingSystemSelect = document.getElementById('originatingSystemInput');
+        const simulateButton = document.getElementById('simulateButton');
+        const matrixTableBody = document.getElementById('matrixTableBody');
+
+        // Populate the Calling Plan Testing Matrix table
+        function populateMatrixTable() {
+            matrixTableBody.innerHTML = ''; // Clear existing rows
+            callingPlanMatrixData.forEach(scenario => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">${scenario.id}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${scenario.callingPlatform}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${scenario.calledPlatform}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${scenario.callingNumber}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${scenario.calledNumber}</td>
+                    <td class="px-3 py-2 text-sm text-gray-700">${scenario.description} <br/> <span class="font-mono text-gray-600 text-xs">${scenario.cubePath}</span></td>
+                    <td class="px-3 py-2 whitespace-nowrap text-sm text-green-600 font-semibold">${scenario.status} ✔️</td>
+                `;
+                matrixTableBody.appendChild(row);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateMatrixTable();
+            simulateButton.addEventListener('click', simulateCall);
+            // Set initial values for convenience based on the common test case (Zoom to PSTN)
+            originatingSystemSelect.value = 'Zoom Phone';
+            callingNumberInput.value = '+16205558080';
+            calledNumberInput.value = '+1234567890';
+        });
+
+        // Event listener for originating system change to update default CPN/CDPN
+        originatingSystemSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'Zoom Phone') {
+                callingNumberInput.value = '+16205558080'; // Zoom to PSTN default CPN
+                calledNumberInput.value = '+1234567890'; // Generic PSTN CDPN
+            } else if (e.target.value === 'CUCM') {
+                callingNumberInput.value = '301001'; // CUCM to Zoom default CPN
+                calledNumberInput.value = '101001'; // Zoom extension CDPN
+            } else if (e.target.value === 'PSTN (ITSP)') {
+                callingNumberInput.value = '+1234567890'; // Generic PSTN CPN
+                calledNumberInput.value = '+16205558080'; // PSTN to Zoom DID
+            }
+        });
     </script>
 </body>
 </html>
